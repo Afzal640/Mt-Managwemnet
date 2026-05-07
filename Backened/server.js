@@ -1,53 +1,53 @@
-  import express from "express";
-  import cors from "cors";
-  import connectDB from "./db/db.js";
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
 
-  import authRoutes from "./routes/auth.js";
+// 1. Config load karein
+dotenv.config();
 
-  import salesRoutes from "./routes/sales.js";
-  import productionRoutes from "./routes/production.js";
-  import leadRoutes from "./routes/leadsroutes.js";
-  import activityRoutes from "./routes/activityroutes.js";
-  import targetRoutes from "./routes/targetRoutes.js";
-  import adminRoutes from "./routes/admin.js";
-  import projectRoutes from "./routes/projectRoutes.js";
-  import fileroutes from "./routes/fileroutes.js";
+// 2. Database Connection (MongoDB wala ab zaroorat nahi hai)
+// import connectDB from "./db/db.js"; <-- Isay remove ya comment kar dein
+// connectDB(); <-- Isay bhi remove kar dein
 
-  connectDB();
+// 3. Routes Import (Check karein ke paths sahi hain)
+import authRoutes from "./routes/auth.js";
+import salesRoutes from "./routes/sales.js";
+// import productionRoutes from "./routes/production.js"; // Agar ye file hai toh theek, warna production logic projects mein hota hai
+import leadRoutes from "./routes/leadsroutes.js";
+import activityRoutes from "./routes/activityroutes.js";
+import targetRoutes from "./routes/targetRoutes.js";
+import adminRoutes from "./routes/admin.js";
+import projectRoutes from "./routes/projectRoutes.js";
+import fileroutes from "./routes/fileroutes.js";
 
-  const app = express();
+const app = express();
 
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
+// 4. Middleware
+app.use(cors());
+app.use(express.json());
 
+// 5. Routes Registration
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/sales", salesRoutes);
+// app.use("/api/production", productionRoutes); // Zarurat ke mutabiq
+app.use("/api/activities", activityRoutes);
+app.use("/api/targets", targetRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/files", fileroutes);
 
+// 6. Base Route
+app.get("/", (req, res) => {
+  res.send("Backend is running on Supabase 🚀");
+});
 
-
-
-  // Routes
-  app.use("/api/auth", authRoutes);
-  app.use("/api/admin", adminRoutes);
-  app.use("/api/sales", salesRoutes);
-  app.use("/api/production", productionRoutes);
-  app.use("/api/activities", activityRoutes);
-  app.use("/api/targets", targetRoutes);
-  app.use("/api/leads", leadRoutes);
-  app.use("/api/projects", projectRoutes);
-  app.use("/api/files", fileroutes);
-
-
-
-  if (process.env.NODE_ENV !== "production") {
-    app.listen(5000, () => {
-      console.log("Server running on port 5000 🚀");
-    });
-  }
-
-  app.get("/", (req, res) => {
-    res.send("Backend is running 🚀");
+// 7. Server Start
+const PORT = process.env.PORT || 5000;
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} 🚀`);
   });
+}
 
-
-
-  export default app;
+export default app;

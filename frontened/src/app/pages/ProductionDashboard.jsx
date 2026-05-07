@@ -1,7 +1,7 @@
 import { Card, Badge, Button } from '../components/ui';
 import { Briefcase, CheckCircle2, Clock, AlertCircle, TrendingUp, Eye } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import axios from "axios";
+import API from "../api/api";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,10 +13,10 @@ export const ProductionDashboard = () => {
     const fetchProjects = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/projects`, {
+        const res = await API.get(`/projects`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setProjects(res.data);
+        setProjects(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Projects fetch error:", err.response?.data || err);
       }
@@ -28,7 +28,7 @@ export const ProductionDashboard = () => {
     'not-started': projects.filter(p => p.status === 'not-started').length,
     'in-progress': projects.filter(p => p.status === 'in-progress').length,
     'review': projects.filter(p => p.status === 'review').length,
-    'completed': projects.filter(p => p.status === 'completed').length
+    'completed': (Array.isArray(projects) ? projects : []).filter(p => p.status === 'completed').length
   };
 
   const statusColors = {
@@ -74,7 +74,7 @@ export const ProductionDashboard = () => {
   const projectsByService = [
     { name: 'Website Dev', value: projects.filter(p => p.service === 'Website Development').length },
     { name: 'Graphic Design', value: projects.filter(p => p.service === 'Graphic Design').length },
-    { name: 'Video Editing', value: projects.filter(p => p.service === 'Video Editing').length }
+    { name: 'Video Editing', value: (Array.isArray(projects) ? projects : []).filter(p => p.service === 'Video Editing').length }
   ];
 
   const completionData = projects.map(p => ({
@@ -178,7 +178,7 @@ export const ProductionDashboard = () => {
         <div className={`space-y-4 ${showAllProjects ? 'max-h-[600px] overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
           {(showAllProjects ? projects : projects.slice(0, 5)).map((project) => (
             <div 
-              key={project._id} 
+              key={project.id || project._id} 
               className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-white hover:ring-1 hover:ring-gray-100 transition-all group gap-4"
             >
               <div className="flex-1">
@@ -222,7 +222,7 @@ export const ProductionDashboard = () => {
                 </div>
                 
                 <button 
-                  onClick={() => navigate(`/production/projects/${project._id}`)}
+                  onClick={() => navigate(`/production/projects/${project.id || project._id}`)}
                   className="p-2 bg-white rounded-lg text-gray-400 hover:text-indigo-600 shadow-sm border border-gray-100 sm:opacity-0 group-hover:opacity-100 transition-all"
                   title="View Project Details"
                 >

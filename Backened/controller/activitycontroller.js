@@ -1,48 +1,95 @@
-import Activity from "../MODELS/activity.js";
-import Target from "../MODELS/target.js";
+import { supabase } from "../config/supabaseClient.js";
 
-// GET ALL ACTIVITIES (Admin sees all, Sales see only theirs)
+// ✅ GET ALL ACTIVITIES
 export const getActivities = async (req, res) => {
   try {
-    let query = {};
-    if (req.user.role !== "admin") {
-      query = { createdBy: req.user.id };
+    const user = req.user;
+    
+    // Query start karein aur 'createdBy' user ka naam join karein
+    let query = supabase
+      .from('activities')
+      .select(`
+        *,
+        createdBy:users!activities_created_by_fkey(name)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Role-based filtering
+    if (user.role !== "admin") {
+      query = query.eq('created_by', user.id);
     }
 
-    const activities = await Activity.find(query)
-      .populate("createdBy", "name")
-      .sort({ createdAt: -1 });
-    res.json(activities);
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ msg: "Error fetching activities" });
   }
 };
 
-// CREATE ACTIVITY
+// ✅ CREATE ACTIVITY
 export const createActivity = async (req, res) => {
   try {
     const user = req.user;
-    const activity = await Activity.create({
-      ...req.body,
-      createdBy: user.id
-    });
+    
+    // 1. Activity data prepare karein (SQL snake_case columns ke mutabiq)
+    const activityData = {
+      type: req.body.type,
+      client_name: req.body.clientName,
+      company: req.body.company,
+      date: req.body.date,
+      time: req.body.time,
+      notes: req.body.notes,
+      outcome: req.body.outcome,
+      created_by: user.id
+    };
 
-    // 🔥 AUTOMATIC TARGET UPDATE
+    const { data: activity, error: activityError } = await supabase
+      .from('activities')
+      .insert([activityData])
+      .select()
+      .single();
+
+    if (activityError) throw activityError;
+
+    // 2. 🔥 AUTOMATIC TARGET UPDATE
     if (user.role === "sales") {
       let targetType = "followups";
       if (activity.type === "call") targetType = "calls";
       if (activity.type === "meeting") targetType = "meetings";
 
-      await Target.findOneAndUpdate(
-        { userId: user.id, period: "daily", type: targetType },
-        { $inc: { current: 1 }, $setOnInsert: { target: 10 } },
-        { upsert: true }
-      );
+      // SQL Upsert Logic: Pehle check karein record hai ya nahi
+      const { data: existingTarget } = await supabase
+        .from('targets')
+        .select('*')
+        .match({ user_id: user.id, period: 'daily', type: targetType })
+        .single();
+
+      if (existingTarget) {
+        // Agar hai to increment karein
+        await supabase
+          .from('targets')
+          .update({ current_value: (existingTarget.current_value || 0) + 1 })
+          .eq('id', existingTarget.id);
+      } else {
+        // Agar nahi hai to naya insert karein (Upsert)
+        await supabase
+          .from('targets')
+          .insert([{
+            user_id: user.id,
+            period: "daily",
+            type: targetType,
+            target_value: 10,
+            current_value: 1
+          }]);
+      }
     }
 
     res.status(201).json(activity);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ msg: "Error creating activity" });
   }
 };

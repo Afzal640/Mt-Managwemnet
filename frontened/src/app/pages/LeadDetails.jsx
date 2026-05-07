@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge } from '../components/ui';
 import { useEffect, useState } from 'react';
-import axios from "axios";
+import API from "../api/api";
 import { ArrowLeft, Mail, Phone, Calendar, DollarSign, User, FileText, Upload, MessageSquare, Clock } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
@@ -70,8 +70,8 @@ const [files, setFiles] = useState([]);
 
   useEffect(() => {
   const fetchFiles = async () => {
-    const res = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/files/${id}`,
+    const res = await API.get(
+      `/files/${id}`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -92,8 +92,8 @@ const handleUpload = async () => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/files/upload/${id}`,
+  const res = await API.post(
+    `/files/upload/${id}`,
     formData,
     {
       headers: {
@@ -108,8 +108,8 @@ const handleUpload = async () => {
 
 
 const handleDelete = async (fileId) => {
-  await axios.delete(
-    `${import.meta.env.VITE_API_URL}/api/files/${fileId}`,
+  await API.delete(
+    `/files/${fileId}`,
     {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -117,7 +117,7 @@ const handleDelete = async (fileId) => {
     }
   );
 
-  setFiles(prev => prev.filter(f => f._id !== fileId));
+  setFiles(prev => prev.filter(f => (f.id || f._id) !== fileId));
 };
 
 
@@ -132,8 +132,8 @@ const handleDelete = async (fileId) => {
       try {
         const token = localStorage.getItem("token");
 
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/leads/${id}`,
+        const res = await API.get(
+          `/leads/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -159,8 +159,8 @@ const handleDelete = async (fileId) => {
     try {
       setStatusUpdating(true);
       const token = localStorage.getItem("token");
-      const res = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/leads/${id}`,
+      const res = await API.put(
+        `/leads/${id}`,
         { status: selectedStatus },
         {
           headers: {
@@ -183,8 +183,8 @@ const handleDelete = async (fileId) => {
     try {
       setNoteUpdating(true);
       const token = localStorage.getItem("token");
-      const res = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/leads/${id}`,
+      const res = await API.put(
+        `/leads/${id}`,
         { notes: noteText },
         {
           headers: {
@@ -366,7 +366,7 @@ const handleDelete = async (fileId) => {
   <div className="space-y-3">
     {files.map((f) => (
       <div
-        key={f._id}
+        key={f.id || f._id}
         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
       >
         {/* LEFT SIDE */}
@@ -406,7 +406,7 @@ const handleDelete = async (fileId) => {
 
           {/* DELETE */}
           <button
-            onClick={() => handleDelete(f._id)}
+            onClick={() => handleDelete(f.id || f._id)}
             className="text-red-600 text-xs font-bold hover:bg-red-50 px-2 py-1 rounded transition-colors"
           >
             Delete

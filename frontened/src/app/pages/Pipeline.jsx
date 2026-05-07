@@ -4,7 +4,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Card } from '../components/ui';
 import { DollarSign, Calendar, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import API from '../api/api';
 
 const ItemType = 'LEAD_CARD';
 
@@ -26,13 +26,13 @@ export const Pipeline = () => {
       try {
         const token = localStorage.getItem("token");
 
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/leads`, {
+        const res = await API.get(`/leads`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
 
-        setLeads(res.data);
+        setLeads(Array.isArray(res.data) ? res.data : []);
       } catch (error) {
         console.log(error);
       }
@@ -46,8 +46,8 @@ export const Pipeline = () => {
     try {
       const token = localStorage.getItem("token");
 
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/leads/${id}`,
+      await API.put(
+        `/leads/${id}`,
         { status: newStatus },
         {
           headers: {
@@ -59,7 +59,7 @@ export const Pipeline = () => {
       // UI update
       setLeads((prev) =>
         prev.map((lead) =>
-          lead._id === id ? { ...lead, status: newStatus } : lead
+          (lead.id || lead._id) === id ? { ...lead, status: newStatus } : lead
         )
       );
     } catch (error) {
@@ -71,7 +71,7 @@ export const Pipeline = () => {
   const LeadCard = ({ lead }) => {
     const [{ isDragging }, drag] = useDrag({
       type: ItemType,
-      item: { id: lead._id, status: lead.status },
+      item: { id: lead.id || lead._id, status: lead.status },
       collect: (monitor) => ({
         isDragging: monitor.isDragging()
       })
@@ -80,7 +80,7 @@ export const Pipeline = () => {
     return (
       <div
         ref={drag}
-        onClick={() => navigate(`/leads/${lead._id}`)}
+        onClick={() => navigate(`/leads/${lead.id || lead._id}`)}
         className={`bg-white p-4 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
           isDragging ? 'opacity-50' : ''
         }`}
@@ -120,7 +120,7 @@ export const Pipeline = () => {
       })
     });
 
-    const columnLeads = leads.filter(
+    const columnLeads = (Array.isArray(leads) ? leads : []).filter(
       (lead) => lead.status === column.id
     );
 
@@ -142,7 +142,7 @@ export const Pipeline = () => {
 
         <div className="bg-gray-50 p-3 space-y-3 min-h-[600px] rounded-b-lg">
           {columnLeads.map((lead) => (
-            <LeadCard key={lead._id} lead={lead} />
+            <LeadCard key={lead.id || lead._id} lead={lead} />
           ))}
 
           {columnLeads.length === 0 && (

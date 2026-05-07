@@ -1,29 +1,42 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
-import { getLeads, createLead, updateLead, deleteLead } from "../controller/leadscontroller.js";
-import Lead from "../MODELS/leads.js"; // ⚠️ yeh bhi missing tha
+import { supabase } from "../config/supabaseClient.js";
+import { 
+  getLeads, 
+  createLead, 
+  updateLead, 
+  deleteLead 
+} from "../controller/leadscontroller.js";
 
 const router = express.Router();
 
-// ✅ Static routes MUST come before parameterized /:id routes
+// ✅ GET ALL LEADS & CREATE LEAD
 router.get("/", protect, getLeads);
 router.post("/", protect, createLead);
 
-// ✅ Parameterized routes after specific ones
+/**
+ * ✅ GET SINGLE LEAD BY ID (Supabase Version)
+ */
 router.get("/:id", protect, async (req, res) => {
   try {
-    const lead = await Lead.findById(req.params.id);
+    const { data: lead, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
 
-    if (!lead) {
+    if (error || !lead) {
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    res.json(lead);
+    // Frontend compatibility ke liye _id add kar rahe hain
+    res.json({ ...lead, _id: lead.id });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
+// ✅ UPDATE & DELETE
 router.put("/:id", protect, updateLead);
 router.delete("/:id", protect, deleteLead);
 

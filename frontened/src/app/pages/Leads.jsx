@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from "axios";
+import API from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { Card, Button, Input, Select, Badge, LoadingSpinner } from '../components/ui';
@@ -74,7 +74,7 @@ const [assignData, setAssignData] = useState({
     const fetchLeads = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/leads`, {
+        const res = await API.get(`/leads`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setLeads(res.data);
@@ -89,9 +89,10 @@ const [assignData, setAssignData] = useState({
 
   useEffect(() => {
     const fetchProductionUsers = async () => {
+      if (user?.role !== 'admin') return;
       const token = localStorage.getItem("token");
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/production-users`, {
+        const res = await API.get(`/auth/production-users`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setProductionUsers(res.data);
@@ -100,7 +101,7 @@ const [assignData, setAssignData] = useState({
       }
     };
     fetchProductionUsers();
-  }, []);
+  }, [user]);
 
   // Filter Logic
   const filteredLeads = leads.filter((lead) => {
@@ -132,7 +133,18 @@ const [assignData, setAssignData] = useState({
 
   const handleEditLead = (lead) => {
     setEditingLead(lead);
-    setFormData(lead);
+    setFormData({
+      clientName: lead.clientName || lead.client_name || '',
+      contactPerson: lead.contactPerson || lead.contact_person || '',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      service: lead.service || 'Website Development',
+      budget: lead.budget || '',
+      deadline: lead.deadline || '',
+      status: lead.status || 'new',
+      source: lead.source || 'Website',
+      notes: lead.notes || ''
+    });
     setShowAddModal(true);
   };
 
@@ -143,15 +155,15 @@ const [assignData, setAssignData] = useState({
       let res;
 
       if (editingLead) {
-        res = await axios.put(
-          `${import.meta.env.VITE_API_URL}/api/leads/${editingLead._id}`,
+        res = await API.put(
+          `/leads/${editingLead.id || editingLead._id}`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setLeads(leads.map(l => l._id === editingLead._id ? res.data : l));
+        setLeads(leads.map(l => (l.id || l._id) === (editingLead.id || editingLead._id) ? res.data : l));
       } else {
-        res = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/leads`,
+        res = await API.post(
+          `/leads`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -174,10 +186,10 @@ const [assignData, setAssignData] = useState({
     if (!window.confirm("Are you sure you want to delete this lead?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/leads/${id}`, {
+      await API.delete(`/leads/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setLeads(leads.filter(l => l._id !== id));
+      setLeads(leads.filter(l => (l.id || l._id) !== id));
     } catch (error) {
       console.error("Error deleting lead:", error);
       alert("Failed to delete lead.");
@@ -200,10 +212,10 @@ const convertLeadToProject = async () => {
   try {
     const token = localStorage.getItem("token");
 
-    await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/projects/from-lead`,
+    await API.post(
+      `/projects/from-lead`,
       {
-        leadId: selectedLead._id,
+        leadId: selectedLead.id || selectedLead._id,
         assignedTo: assignData.assignedTo,
         service: assignData.service,
         deadline: assignData.deadline,
@@ -295,7 +307,7 @@ const convertLeadToProject = async () => {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredLeads.map((lead) => (
-                <tr key={lead._id} className="hover:bg-gray-50 transition-colors">
+                <tr key={lead.id || lead._id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4">
                     <div className="font-bold text-gray-900">{lead.clientName}</div>
                     <div className="text-xs text-gray-500">{lead.source}</div>
@@ -329,14 +341,14 @@ const convertLeadToProject = async () => {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2">
-                       <button onClick={() => navigate(`/leads/${lead._id}`)} className="p-2 hover:bg-white rounded-lg text-gray-400 hover:text-indigo-600 transition-colors shadow-sm border border-transparent hover:border-gray-100">
+                       <button onClick={() => navigate(`/leads/${lead.id || lead._id}`)} className="p-2 hover:bg-white rounded-lg text-gray-400 hover:text-indigo-600 transition-colors shadow-sm border border-transparent hover:border-gray-100">
                         <Eye size={16} />
                       </button>
                       <button onClick={() => handleEditLead(lead)} className="p-2 hover:bg-white rounded-lg text-gray-400 hover:text-indigo-600 transition-colors shadow-sm border border-transparent hover:border-gray-100">
                         <Edit2 size={16} />
                       </button>
                       <button 
-                        onClick={() => handleDeleteLead(lead._id)}
+                        onClick={() => handleDeleteLead(lead.id || lead._id)}
                         className="p-2 hover:bg-white rounded-lg text-gray-400 hover:text-rose-600 transition-colors shadow-sm border border-transparent hover:border-gray-100"
                       >
                         <Trash2 size={16} />
@@ -388,7 +400,7 @@ const convertLeadToProject = async () => {
             options={[
               { value: "", label: "Select Team Member" },
               ...productionUsers.map(u => ({
-                value: u._id,
+                value: u.id || u._id,
                 label: u.name
               }))
             ]}

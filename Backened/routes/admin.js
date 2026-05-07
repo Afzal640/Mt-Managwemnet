@@ -1,23 +1,22 @@
 import express from "express";
-import User from "../MODELS/USER.js";
-import Activity from "../MODELS/activity.js";
+import { supabase } from "../config/supabaseClient.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import { getTeamReport } from "../controller/admincontroller.js";
+import { getTeamReport, getChartData } from "../controller/admincontroller.js";
+import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
 /**
- * 🟢 TEAM REPORT (For Admin Team View)
- */
-router.get("/team-report", protect, authorizeRoles("admin"), getTeamReport);
-
-/**
- * 🟢 USERS LIST (Sales / Production / Admin)
+ * 🟢 USERS LIST
  */
 router.get("/users", protect, authorizeRoles("admin"), async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, name, email, role, status');
+
+    if (error) throw error;
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -29,35 +28,31 @@ router.get("/users", protect, authorizeRoles("admin"), async (req, res) => {
  */
 router.get("/dashboard-stats", protect, authorizeRoles("admin"), async (req, res) => {
   try {
-    const users = await User.find();
+    // 1. Users fetch karein roles ke liye (optional count)
+    const { data: users, error: userError } = await supabase.from('users').select('role');
+    
+    // 2. Leads fetch karein stats ke liye
+    const { data: leads, error: leadError } = await supabase.from('leads').select('status, budget');
 
-    const sales = users.filter(u => u.role === "sales").length;
-    const production = users.filter(u => u.role === "production").length;
-    const admin = users.filter(u => u.role === "admin").length;
+    // 3. Activities fetch karein
+    const { data: activities, error: actError } = await supabase
+      .from('activities')
+      .select('*, createdBy:users(name)')
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-    const activities = await Activity.find().populate("createdBy", "name").sort({ createdAt: -1 }).limit(10);
+    if (userError || leadError || actError) throw userError || leadError || actError;
+
+    const wonLeads = leads.filter(l => l.status === "closed-won");
+    const followupLeads = leads.filter(l => l.status === "discussing" || l.status === "proposal");
+
+    const totalRevenue = wonLeads.reduce((sum, l) => sum + (parseFloat(l.budget) || 0), 0);
 
     res.json({
-      leads: {
-        value: users.length,
-        change: 10,
-        trend: "up"
-      },
-      deals: {
-        value: sales,
-        change: 5,
-        trend: "up"
-      },
-      followups: {
-        value: production,
-        change: -2,
-        trend: "down"
-      },
-      revenue: {
-        value: users.length * 100,
-        change: 12,
-        trend: "up"
-      },
+      leads: { value: leads.length, change: 10, trend: "up" },
+      deals: { value: wonLeads.length, change: 5, trend: "up" },
+      followups: { value: followupLeads.length, change: -2, trend: "down" },
+      revenue: { value: totalRevenue, change: 12, trend: "up" },
       recentActivities: activities
     });
   } catch (error) {
@@ -66,53 +61,46 @@ router.get("/dashboard-stats", protect, authorizeRoles("admin"), async (req, res
 });
 
 /**
- * 🔵 CHART DATA
+ * 📊 CHART DATA
  */
-router.get("/chart-data", protect, authorizeRoles("admin"), async (req, res) => {
-  try {
-    const users = await User.find();
+router.get("/chart-data", protect, authorizeRoles("admin", "sales", "production"), getChartData);
 
-    const sales = users.filter(u => u.role === "sales").length;
-    const production = users.filter(u => u.role === "production").length;
+/**
+ * 👥 TEAM REPORT
+ */
+router.get("/team-report", protect, authorizeRoles("admin", "sales", "production"), getTeamReport);
 
-    res.json({
-      leadsByService: [
-        { name: "Sales", value: sales, color: "#6366f1" },
-        { name: "Production", value: production, color: "#10b981" }
-      ],
-      monthlyDeals: [
-        { month: "Jan", deals: 5, revenue: 10 },
-        { month: "Feb", deals: 8, revenue: 15 },
-        { month: "Mar", deals: 12, revenue: 20 }
-      ]
-    });
 
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
 
+/**
+ * 🔵 CREATE USER
+ */
 router.post("/create-user", protect, authorizeRoles("admin"), async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+    // Check if user exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
 
-    const user = await User.create({
-      name,
-      email,
-      password,
-      role // sales / production / admin
-    });
+    if (existingUser) return res.status(400).json({ message: "User already exists" });
 
-    res.status(201).json({
-      message: "User created successfully",
-      user
-    });
+    // Password hashing
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert([{ name, email, password: hashedPassword, role }])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    res.status(201).json({ message: "User created successfully", user: newUser });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

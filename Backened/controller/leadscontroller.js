@@ -1,108 +1,91 @@
-import Lead from "../MODELS/leads.js";
-import Target from "../MODELS/target.js";
-import Activity from "../MODELS/activity.js";
-import User from "../MODELS/USER.js";
+import { supabase } from "../config/supabaseClient.js";
 
-// ✅ GET LEADS
+// ✅ GET LEADS (Converted)
 export const getLeads = async (req, res) => {
   try {
     const user = req.user;
-    let leads;
+    // SQL mein hum select ke andar foreign keys ko specify karte hain (Populate jaisa result lene ke liye)
+    let query = supabase
+      .from('leads')
+      .select(`
+        *,
+        createdBy:users!leads_created_by_fkey(id, name, email),
+        assignedTo:users!leads_assigned_to_fkey(id, name, email)
+      `)
+      .order('created_at', { ascending: false });
 
-    if (user.role === "admin") {
-      leads = await Lead.find()
-        .populate("createdBy", "name email")
-        .populate("assignedTo", "name email")
-        .sort({ createdAt: -1 });
-    } else if (user.role === "sales") {
-      leads = await Lead.find({
-        $or: [{ assignedTo: user._id }, { createdBy: user._id }]
-      })
-        .populate("createdBy", "name email")
-        .populate("assignedTo", "name email")
-        .sort({ createdAt: -1 });
-    } else {
-      leads = [];
+    // Role-based filtering
+    if (user.role === "sales") {
+      query = query.or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`);
+    } else if (user.role !== "admin") {
+      return res.json([]);
     }
-    res.json(leads);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ CREATE LEAD
+// ✅ CREATE LEAD (Converted)
 export const createLead = async (req, res) => {
   try {
     const user = req.user;
     const leadData = {
-      ...req.body,
-      createdBy: user._id,
+      client_name: req.body.clientName, // SQL columns lowercase/underscore hote hain
+      contact_person: req.body.contactPerson,
+      email: req.body.email,
+      phone: req.body.phone,
+      service: req.body.service,
+      budget: req.body.budget,
+      status: req.body.status || 'new',
+      created_by: user.id,
+      assigned_to: user.role === "sales" ? user.id : req.body.assignedTo
     };
 
-    if (user.role === "sales") {
-      leadData.assignedTo = user._id;
-    }
+    // 1. Insert Lead
+    const { data: lead, error: leadError } = await supabase
+      .from('leads')
+      .insert([leadData])
+      .select()
+      .single();
 
-    const lead = await Lead.create(leadData);
+    if (leadError) throw leadError;
 
-    // 🔔 Auto-log a notification activity so admin sees it in the feed
-    await Activity.create({
+    // 2. Auto-log Activity
+    await supabase.from('activities').insert([{
       type: "message",
-      clientName: lead.clientName,
-      company: lead.contactPerson || lead.clientName,
-      notes: `New lead "${lead.clientName}" was added by ${user.name || "a team member"}. Service: ${lead.service || "N/A"}. Budget: ${lead.budget || "N/A"}. Status: ${lead.status || "new"}.`,
+      client_name: lead.client_name,
+      notes: `New lead added by ${user.name || "team"}.`,
       outcome: "Lead Created",
-      createdBy: user._id,
-    });
+      created_by: user.id
+    }]);
 
-    // 🔥 Update Target Progress
+    // 3. Update Target Progress (Sales Only)
     if (user.role === "sales") {
-      await Target.findOneAndUpdate(
-        { userId: user._id, period: "daily", type: "leads" },
-        { $inc: { current: 1 }, $setOnInsert: { target: 10 } },
-        { upsert: true }
-      );
-    }
+      // Note: SQL mein 'upsert' ke liye logic thora change hota hai
+      // Hum pehle check karenge ke target exist karta hai ya nahi
+      const { data: target } = await supabase
+        .from('targets')
+        .select('*')
+        .match({ user_id: user.id, period: 'daily', type: 'leads' })
+        .single();
 
-    // Return populated lead
-    const populatedLead = await Lead.findById(lead._id)
-      .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
-
-    res.json(populatedLead);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ✅ UPDATE LEAD
-export const updateLead = async (req, res) => {
-  try {
-    const oldLead = await Lead.findById(req.params.id);
-    const lead = await Lead.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    )
-      .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
-
-    // 🔥 Target Progress for Deals & Revenue
-    if (req.user.role === "sales" && req.body.status === "closed-won" && oldLead.status !== "closed-won") {
-      const revenueValue = lead.value || 0;
-      
-      await Target.findOneAndUpdate(
-        { userId: req.user._id, period: "monthly", type: "deals" },
-        { $inc: { current: 1 }, $setOnInsert: { target: 5 } },
-        { upsert: true }
-      );
-
-      if (revenueValue > 0) {
-        await Target.findOneAndUpdate(
-          { userId: req.user._id, period: "monthly", type: "revenue" },
-          { $inc: { current: revenueValue }, $setOnInsert: { target: 50000 } },
-          { upsert: true }
-        );
+      if (target) {
+        await supabase
+          .from('targets')
+          .update({ current_value: target.current_value + 1 })
+          .match({ id: target.id });
+      } else {
+        await supabase.from('targets').insert([{
+          user_id: user.id,
+          period: 'daily',
+          type: 'leads',
+          target_value: 10,
+          current_value: 1
+        }]);
       }
     }
 
@@ -112,11 +95,64 @@ export const updateLead = async (req, res) => {
   }
 };
 
-// ✅ DELETE LEAD
+// ✅ DELETE LEAD (Converted)
 export const deleteLead = async (req, res) => {
   try {
-    await Lead.findByIdAndDelete(req.params.id);
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
     res.status(200).json({ message: "Lead deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ UPDATE LEAD (Converted)
+export const updateLead = async (req, res) => {
+  try {
+    const { 
+      clientName, 
+      contactPerson, 
+      email, 
+      phone, 
+      service, 
+      budget, 
+      status, 
+      assignedTo,
+      notes,
+      source,
+      deadline
+    } = req.body;
+
+    const updateData = {};
+    if (clientName) updateData.client_name = clientName;
+    if (contactPerson) updateData.contact_person = contactPerson;
+    if (email) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (service) updateData.service = service;
+    if (budget) updateData.budget = budget;
+    if (status) updateData.status = status;
+    if (assignedTo) updateData.assigned_to = assignedTo;
+    if (notes !== undefined) updateData.notes = notes;
+    if (source) updateData.source = source;
+    if (deadline !== undefined) updateData.deadline = deadline;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No data provided for update" });
+    }
+
+    const { data: lead, error } = await supabase
+      .from('leads')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(lead);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

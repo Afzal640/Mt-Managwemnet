@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import API from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import DarkToggle from "../components/DarkToggle";
@@ -92,8 +92,8 @@ export const Dashboard = () => {
     }
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/admin/create-user`,
+      await API.post(
+        `/admin/create-user`,
         { name, email, password, role },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -115,14 +115,14 @@ export const Dashboard = () => {
     }
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/targets/assign`,
+      await API.post(
+        `/targets/assign`,
         targetForm,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert("Target assigned successfully! 🎯");
       setIsTargetModalOpen(false);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/targets`, {
+      const res = await API.get(`/targets`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAllTargets(res.data);
@@ -136,7 +136,7 @@ export const Dashboard = () => {
   const createProject = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/projects`, projectForm, {
+      await API.post(`/projects`, projectForm, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Project created ✅");
@@ -162,10 +162,10 @@ export const Dashboard = () => {
         if (!isAdmin && !isSales) return; // Production users will be redirected, don't fetch stats
 
         const endpoint = isAdmin
-          ? `${import.meta.env.VITE_API_URL}/api/admin/dashboard-stats`
-          : `${import.meta.env.VITE_API_URL}/api/sales/dashboard`;
+          ? `/admin/dashboard-stats`
+          : `/sales/dashboard`;
 
-        const statsRes = await axios.get(endpoint, {
+        const statsRes = await API.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -187,27 +187,27 @@ export const Dashboard = () => {
         let usersPromise = Promise.resolve({ data: [] });
 
         if (isAdmin) {
-          chartPromise = axios
-            .get(`${import.meta.env.VITE_API_URL}/api/admin/chart-data`, {
+          chartPromise = API
+            .get(`/admin/chart-data`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             .catch(() => ({ data: { leadsByService: [], monthlyDeals: [] } }));
 
-          usersPromise = axios
-            .get(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
+          usersPromise = API
+            .get(`/admin/users`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             .catch(() => ({ data: [] }));
 
-          axios
-            .get(`${import.meta.env.VITE_API_URL}/api/auth/sales-users`, {
+          API
+            .get(`/auth/sales-users`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             .then((res) => setSalesUsers(res.data))
             .catch(() => {});
 
-          axios
-            .get(`${import.meta.env.VITE_API_URL}/api/targets`, {
+          API
+            .get(`/targets`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             .then((res) => setAllTargets(res.data))
@@ -249,8 +249,8 @@ export const Dashboard = () => {
       if (user?.role !== "admin") return;
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/auth/production-users`,
+        const res = await API.get(
+          `/auth/production-users`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setProductionUsers(res.data);
@@ -364,7 +364,7 @@ export const Dashboard = () => {
                 onChange={(e) => setProjectForm({ ...projectForm, assignedTo: e.target.value })}
                 options={[
                   { value: "", label: "Select Production User" },
-                  ...productionUsers.map((u) => ({ value: u._id, label: u.name })),
+                  ...productionUsers.map((u) => ({ value: u.id || u._id, label: u.name })),
                 ]}
               />
               <Input
@@ -764,7 +764,7 @@ export const Dashboard = () => {
                 onChange={(e) => setTargetForm({ ...targetForm, userId: e.target.value })}
                 options={[
                   { value: "", label: "Choose User" },
-                  ...salesUsers.map((u) => ({ value: u._id, label: u.name })),
+                  ...salesUsers.map((u) => ({ value: u.id || u._id, label: u.name })),
                 ]}
               />
 

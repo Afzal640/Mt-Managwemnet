@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../api/api";
 import { Card, Badge, LoadingSpinner } from "../components/ui";
 import { Trophy, TrendingUp, Users, DollarSign } from "lucide-react";
 
@@ -14,7 +14,7 @@ export const Team = () => {
       try {
         const token = localStorage.getItem("token");
         console.log("TOKEN:", localStorage.getItem("token"));
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/team-report`, {
+        const res = await API.get(`/admin/team-report`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setData(res.data);
@@ -31,11 +31,11 @@ export const Team = () => {
   if (!data) return <p className="p-6">Failed to load team data.</p>;
 
   // Filter members from API data
-const salesMembers = data?.teamMembers?.filter(
+const salesMembers = (Array.isArray(data?.teamMembers) ? data.teamMembers : []).filter(
   m => m.role === "sales" || m.role === "admin"
 ) || [];
 
-const productionMembers = data?.teamMembers?.filter(
+const productionMembers = (Array.isArray(data?.teamMembers) ? data.teamMembers : []).filter(
   m => m.role === "production"
 ) || [];
 
@@ -109,7 +109,7 @@ const productionMembers = data?.teamMembers?.filter(
         <h2 className="text-xl font-bold text-gray-900 mb-4">Sales Team</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {salesMembers.map((member) => (
-            <Card key={member._id} className="p-6 transition-all hover:shadow-md">
+            <Card key={member.id || member._id} className="p-6 transition-all hover:shadow-md">
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center">
                   <div className="relative">
@@ -148,7 +148,7 @@ const productionMembers = data?.teamMembers?.filter(
         <h2 className="text-xl font-bold text-gray-900 mb-4">Production Team</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {productionMembers.map((member) => (
-            <Card key={member._id} className="p-6">
+            <Card key={member.id || member._id} className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
                   <img

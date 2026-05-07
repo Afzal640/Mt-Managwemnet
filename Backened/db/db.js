@@ -1,16 +1,27 @@
 import mongoose from "mongoose";
+import dns from "dns";
+
+dns.setDefaultResultOrder("ipv4first");
 
 const connectDB = async () => {
-  // Aapka asli Connection String
-  const dbURI = "mongodb+srv://muhammad64078_db_user:qyUukG3A6Ab9k2Uj@cluster0.yil7zff.mongodb.net/crm";
+  const dbURI = process.env.MONGO_URI;
+
+  if (!dbURI) {
+    console.error("MONGO_URI is not defined in .env file ❌");
+    process.exit(1);
+  }
 
   try {
-    // Humne direct dbURI variable pass kiya hai
-    await mongoose.connect(dbURI);
+    await mongoose.connect(dbURI, {
+      family: 4, // Force IPv4 to resolve DNS issues (ECONNREFUSED)
+    });
     console.log("MongoDB Connected ✅");
   } catch (error) {
     console.error("MongoDB Connection Error ❌:", error.message);
-    process.exit(1); // Error aane par process ko stop kar dega
+    if (error.message.includes("ECONNREFUSED")) {
+      console.log("Tip: This often means your IP is not allowlisted in MongoDB Atlas or there is a DNS issue.");
+    }
+    process.exit(1);
   }
 };
 

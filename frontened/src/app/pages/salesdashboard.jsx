@@ -174,7 +174,7 @@ export const SalesDashboard = () => {
           <div className="space-y-4">
             {recentActivities.length > 0 ? (
               recentActivities.map((act) => (
-                <div key={act._id} className="flex items-center gap-4 p-4 rounded-xl bg-white border border-gray-100 shadow-sm hover:border-indigo-100 transition-all">
+                <div key={act.id || act._id} className="flex items-center gap-4 p-4 rounded-xl bg-white border border-gray-100 shadow-sm hover:border-indigo-100 transition-all">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-50 text-indigo-600">
                     <ActivityIcon size={20} />
                   </div>

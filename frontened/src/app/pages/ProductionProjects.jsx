@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import API from '../api/api';
 import { Card, Badge, Select } from '../components/ui';
 import { Search, Eye } from 'lucide-react';
 
@@ -35,14 +35,14 @@ export const ProductionProjects = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios.get("${import.meta.env.VITE_API_URL}/api/projects", {
+    API.get("/projects", {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(res => setProjectsData(res.data))
+      .then(res => setProjectsData(Array.isArray(res.data) ? res.data : []))
       .catch(err => console.error(err));
   }, []);
 
-  const filteredProjects = projectsData.filter((project) => {
+  const filteredProjects = Array.isArray(projectsData) ? projectsData.filter((project) => {
     const matchesSearch = 
       (project.clientName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (project.assignedTo?.name?.toLowerCase() || "").includes(searchTerm.toLowerCase());
@@ -51,7 +51,7 @@ export const ProductionProjects = () => {
     const matchesStatus = filterStatus === 'all' || project.status === filterStatus;
 
     return matchesSearch && matchesService && matchesStatus;
-  });
+  }) : [];
 
   return (
     <div className="space-y-6">
@@ -122,12 +122,12 @@ export const ProductionProjects = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProjects.map((project) => (
-                <tr key={project._id} className="hover:bg-gray-50">
+                <tr key={project.id || project._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <p className="text-sm text-gray-900 font-bold">{project.clientName}</p>
                       <div className="flex items-center mt-1">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest">PROJ-{project._id?.substring(0, 5)}</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-widest">PROJ-{(project.id || project._id)?.substring(0, 5)}</span>
                         {project.priority === 'high' && (
                           <Badge variant="danger" className="ml-2">High Priority</Badge>
                         )}
@@ -163,7 +163,7 @@ export const ProductionProjects = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
-                      onClick={() => navigate(`/production/projects/${project._id}`)}
+                      onClick={() => navigate(`/production/projects/${project.id || project._id}`)}
                       className="text-gray-400 hover:text-indigo-600 transition-colors"
                       title="View Details"
                     >
@@ -188,25 +188,25 @@ export const ProductionProjects = () => {
         <Card className="p-4 border-none ring-1 ring-gray-100 bg-white">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Not Started</p>
           <p className="text-2xl font-bold text-gray-900">
-            {projectsData.filter(p => p.status === 'not-started').length}
+            {(Array.isArray(projectsData) ? projectsData : []).filter(p => p.status === 'not-started').length}
           </p>
         </Card>
         <Card className="p-4 border-none ring-1 ring-gray-100 bg-white">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">In Progress</p>
           <p className="text-2xl font-bold text-gray-900">
-            {projectsData.filter(p => p.status === 'in-progress').length}
+            {(Array.isArray(projectsData) ? projectsData : []).filter(p => p.status === 'in-progress').length}
           </p>
         </Card>
         <Card className="p-4 border-none ring-1 ring-gray-100 bg-white">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">In Review</p>
           <p className="text-2xl font-bold text-gray-900">
-            {projectsData.filter(p => p.status === 'review').length}
+            {(Array.isArray(projectsData) ? projectsData : []).filter(p => p.status === 'review').length}
           </p>
         </Card>
         <Card className="p-4 border-none ring-1 ring-gray-100 bg-white">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Completed</p>
           <p className="text-2xl font-bold text-gray-900">
-            {projectsData.filter(p => p.status === 'completed').length}
+            {(Array.isArray(projectsData) ? projectsData : []).filter(p => p.status === 'completed').length}
           </p>
         </Card>
       </div>

@@ -97,7 +97,7 @@ const Activity = () => {
           const Icon = type?.icon || MessageSquare;
 
           return (
-            <div key={a._id} className="relative flex gap-4">
+            <div key={a.id || a._id} className="relative flex gap-4">
 
               {/* DOT */}
               <div className={`w-6 h-6 rounded-full flex items-center justify-center mt-2

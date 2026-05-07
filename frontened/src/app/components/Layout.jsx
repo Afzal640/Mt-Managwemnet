@@ -9,11 +9,13 @@ export const Layout = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="flex min-h-screen bg-background overflow-hidden">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <div className="lg:ml-64 transition-all duration-300">
+      
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-64">
         <Navbar onMenuClick={toggleSidebar} />
-        <main className="pt-16 p-4 md:p-6 lg:p-8">
+        
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
           <Outlet />
         </main>
       </div>

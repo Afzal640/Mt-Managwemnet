@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import API from '../api/api';
 import { Card, Button, Badge, LoadingSpinner } from '../components/ui';
 import { ArrowLeft, Upload, FileText, CheckCircle2, MessageSquare, Clock } from 'lucide-react';
 
@@ -13,8 +13,8 @@ const uploadFile = async () => {
   try {
     const token = localStorage.getItem("token");
 
-    await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/projects/${id}/files`,
+    await API.post(
+      `/projects/${id}/files`,
       { fileUrl: "https://dummyfile.com/file.pdf" },
       {
         headers: {
@@ -80,14 +80,19 @@ export const ProjectDetails = () => {
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks');
+  const [localStatus, setLocalStatus] = useState('');
+  const [localProgress, setLocalProgress] = useState(0);
+  const [updating, setUpdating] = useState(false);
 
   const fetchProject = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/projects/${id}`, {
+      const res = await API.get(`/projects/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProject(res.data);
+      setLocalStatus(res.data.status);
+      setLocalProgress(res.data.progress);
     } catch (err) {
       console.error("Failed to fetch project details", err);
     } finally {
@@ -100,7 +105,7 @@ export const ProjectDetails = () => {
     const fetchAllProjects = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/projects`, {
+        const res = await API.get(`/projects`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAllProjects(res.data);
@@ -111,19 +116,22 @@ export const ProjectDetails = () => {
     fetchAllProjects();
   }, [id]);
 
-  const updateStatus = async (newStatus) => {
+  const handleSaveUpdate = async () => {
     try {
+      setUpdating(true);
       const token = localStorage.getItem("token");
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/projects/${id}/status`,
-        { status: newStatus },
+      await API.patch(
+        `/projects/${id}/status`,
+        { status: localStatus, progress: localProgress },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchProject(); // Refresh data
-      alert("Status updated successfully! ✅");
+      alert("Project updated successfully! ✅");
     } catch (err) {
-      console.error("Failed to update status", err);
-      alert("Error updating status ❌");
+      console.error("Failed to update project", err);
+      alert("Error updating project ❌");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -133,8 +141,8 @@ export const ProjectDetails = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/projects/${id}/files`,
+      await API.post(
+        `/projects/${id}/files`,
         { url: fileUrl },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -408,30 +416,42 @@ export const ProjectDetails = () => {
             </div>
           </Card>
 
-          {/* Update Status */}
           <Card className="p-6 border-none ring-1 ring-gray-100 bg-white shadow-sm">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Phase Control</h3>
-            <select 
-              value={project.status}
-              onChange={(e) => updateStatus(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-100 bg-gray-50 rounded-xl text-sm font-bold text-gray-700 outline-none ring-2 ring-transparent focus:ring-indigo-500 transition-all mb-4"
-            >
-              <option value="not-started">Not Started</option>
-              <option value="in-progress">In Progress</option>
-              <option value="review">Review</option>
-              <option value="completed">Completed</option>
-            </select>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Update Progress (%)</label>
-              <input 
-                type="number"
-                min="0"
-                max="100"
-                value={project.progress}
-                onChange={(e) => updateStatus(project.status, e.target.value)}
-                onBlur={(e) => updateStatus(project.status, e.target.value)}
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm font-bold"
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Status</label>
+                <select 
+                  value={localStatus}
+                  onChange={(e) => setLocalStatus(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-100 bg-gray-50 rounded-xl text-sm font-bold text-gray-700 outline-none ring-2 ring-transparent focus:ring-indigo-500 transition-all"
+                >
+                  <option value="not-started">Not Started</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Update Progress (%)</label>
+                <input 
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={localProgress}
+                  onChange={(e) => setLocalProgress(Number(e.target.value))}
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm font-bold"
+                />
+              </div>
+
+              <Button 
+                onClick={handleSaveUpdate} 
+                disabled={updating}
+                className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-sm mt-2"
+              >
+                {updating ? 'Saving...' : 'Save Updates'}
+              </Button>
             </div>
           </Card>
           {/* Quick Switch / Recent Projects */}
@@ -440,17 +460,17 @@ export const ProjectDetails = () => {
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
               {allProjects.map((p) => (
                 <button
-                  key={p._id}
-                  onClick={() => navigate(`/production/projects/${p._id}`)}
+                  key={p.id || p._id}
+                  onClick={() => navigate(`/production/projects/${p.id || p._id}`)}
                   className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-all flex items-center justify-between group
-                    ${p._id === id 
+                    ${(p.id || p._id) === id 
                       ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-100 shadow-sm' 
                       : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'
                     }
                   `}
                 >
                   <span className="truncate">{p.clientName}</span>
-                  {p._id === id && <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.6)]" />}
+                  {(p.id || p._id) === id && <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.6)]" />}
                 </button>
               ))}
               {allProjects.length === 0 && (
