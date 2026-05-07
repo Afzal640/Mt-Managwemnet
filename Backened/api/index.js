@@ -18,8 +18,31 @@ import fileroutes from "../routes/fileroutes.js";
 const app = express();
 
 // 3. Middleware
-app.use(cors());
+app.use(cors({
+  origin: true, // Reflects the origin of the request
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// Manual CORS for error responses and edge cases
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PATCH,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 app.use(express.json());
+
+// Request Logger for Vercel
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 // 4. Routes Registration
 app.use("/api/auth", authRoutes);
@@ -46,10 +69,15 @@ app.get("/", (req, res) => {
 
 // 6. Global Error Handler
 app.use((err, req, res, next) => {
-  console.error("🔥 Global Error Handler:", err.stack);
+  console.error("🔥 Global Error Handler:", err);
+  
+  // Ensure CORS headers on error
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  
   res.status(500).json({ 
     message: "Something went wrong on the server!",
-    error: process.env.NODE_ENV === "production" ? {} : err.message
+    error: err.message,
+    stack: process.env.NODE_ENV === "production" ? "🥞" : err.stack
   });
 });
 
