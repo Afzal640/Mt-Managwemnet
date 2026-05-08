@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  // Example: src/api/axios.js ya jahan bhi baseURL hai
-baseURL: "https://mt-managwemnet.vercel.app/api"
+  baseURL: import.meta.env.VITE_API_URL, // Ye line check karein
+  withCredentials: true
 });
 
 api.interceptors.request.use((config) => {
