@@ -19,24 +19,22 @@ import fileroutes from "../routes/fileroutes.js";
 
 
 const allowedOrigins = [
-  "https://mt-managwemnet-rr4w.vercel.app", // Ye naya URL lazmi hona chahiye
+  "https://mt-managwemnet-rr4w.vercel.app", // Ye bilkul exact hona chahiye (no extra slash)
   "http://localhost:5173",
   "http://localhost:3000"
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Agar origin list mein hai ya local request hai
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log("Blocked by CORS:", origin); // Troubleshooting ke liye
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error('CORS Error: Origin not allowed'));
     }
   },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 // 2. Preflight Requests (OPTIONS) ko handle karein
