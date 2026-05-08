@@ -2,9 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 
-dotenv.config();
-const app = express();
-
 // Routes Import
 import authRoutes from "../routes/auth.js";
 import salesRoutes from "../routes/sales.js";
@@ -15,23 +12,21 @@ import adminRoutes from "../routes/admin.js";
 import projectRoutes from "../routes/projectRoutes.js";
 import fileroutes from "../routes/fileroutes.js";
 
-// index.js ke bilkul shuru mein, app = express() ke foran baad:
+dotenv.config();
+const app = express();
 
-app.use((req, res, next) => {
-  // Ye line har kisi ko access de degi (Development ke liye best hai)
-  res.setHeader("Access-Control-Allow-Origin", "*"); 
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-  
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-  next();
-});
+// ✅ 1. CORS Configuration (Proper Way)
+app.use(cors({
+  origin: "*", // Production mein isko "https://mt-managwemnet-rr4w.vercel.app" kar dein
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true
+}));
 
+// ✅ 2. Body Parser
 app.use(express.json());
 
-// Routes Registration
+// ✅ 3. Routes Registration
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sales", salesRoutes);
@@ -41,6 +36,7 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
+// Root Routes
 app.get("/", (req, res) => {
   res.json({ 
     message: "CRM API is running... 🚀",
@@ -56,10 +52,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Favicon issues fix
 app.get("/favicon.ico", (req, res) => res.status(204).end());
-app.get("/favicon.png", (req, res) => res.status(204).end());
 
-// ✅ CATCH-ALL 404 HANDLER
+// ✅ 4. CATCH-ALL 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({
     msg: "Endpoint not found",
@@ -68,13 +64,14 @@ app.use((req, res) => {
   });
 });
 
-// ✅ GLOBAL ERROR HANDLER (Ensures CORS headers are present even on crashes)
+// ✅ 5. GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("Server Error:", err.stack);
   res.status(500).json({ 
     msg: "Internal Server Error", 
-    error: err.message 
+    error: process.env.NODE_ENV === 'development' ? err.message : "Something went wrong"
   });
 });
 
+// Vercel ke liye export
 export default app;
