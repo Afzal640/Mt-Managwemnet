@@ -4,6 +4,7 @@ import cors from "cors";
 
 // 1. Config load karein
 dotenv.config();
+const app = express();
 
 // 2. Routes Import
 import authRoutes from "../routes/auth.js";
@@ -15,7 +16,7 @@ import adminRoutes from "../routes/admin.js";
 import projectRoutes from "../routes/projectRoutes.js";
 import fileroutes from "../routes/fileroutes.js";
 
-const app = express();
+
 
 // 3. Middleware
 const allowedOrigins = [
@@ -26,15 +27,15 @@ const allowedOrigins = [
 ];
 
 
-
 app.use(cors({
-  origin: "https://frontenedmt-crm-xiu9.vercel.app", // Aapka frontend URL
+  origin: "https://frontenedmt-crm-xiu9.vercel.app", // Aapka Frontend URL
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 
-// Preflight requests (OPTIONS) ko handle karne ke liye (Ye zaroori hai!)
+// 2. Preflight Requests (OPTIONS) ko handle karein
+// Ye line CORS error khatam karne ke liye sabse zaroori hai
 app.options("(.*)", cors());
 
 app.use(express.json());
