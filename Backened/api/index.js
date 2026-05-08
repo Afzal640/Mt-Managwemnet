@@ -15,24 +15,19 @@ import adminRoutes from "../routes/admin.js";
 import projectRoutes from "../routes/projectRoutes.js";
 import fileroutes from "../routes/fileroutes.js";
 
-// ✅ ENHANCED CORS CONFIGURATION
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    // Allow localhost and any vercel.app domain
-    if (origin.includes("localhost") || origin.endsWith(".vercel.app")) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
-}));
+// index.js ke bilkul shuru mein, app = express() ke foran baad:
+
+app.use((req, res, next) => {
+  // Ye line har kisi ko access de degi (Development ke liye best hai)
+  res.setHeader("Access-Control-Allow-Origin", "*"); 
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use(express.json());
 
