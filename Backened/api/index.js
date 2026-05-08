@@ -15,34 +15,25 @@ import fileroutes from "../routes/fileroutes.js";
 dotenv.config();
 const app = express();
 
-// ✅ 1. CORS Configuration (Fixed for Vercel)
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      "https://mt-managwemnet-pudb.vercel.app",
-      "https://mt-managwemnet-pudb-git-main-mt3.vercel.app"
-    ];
+// ✅ 1. MANUAL CORS MIDDLEWARE (More reliable on Vercel)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Allow all vercel.app origins or localhost
+  if (!origin || origin.endsWith(".vercel.app") || origin.includes("localhost")) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  }
+  
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-    // Check if origin is allowed or is a vercel.app subdomain
-    if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || origin.includes("localhost")) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-
-// Force handle OPTIONS for all routes
-app.options("*", cors(corsOptions));
+  // Handle Preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use(express.json());
 
