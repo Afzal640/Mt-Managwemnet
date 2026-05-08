@@ -18,17 +18,22 @@ import fileroutes from "../routes/fileroutes.js";
 
 
 
-// 3. Middleware
 const allowedOrigins = [
-  "https://frontenedmt-crm-xiu9.vercel.app",
-  "https://mt-crm-pi.vercel.app",
+  "https://mt-managwemnet-rr4w.vercel.app", // Ye naya URL lazmi hona chahiye
   "http://localhost:5173",
   "http://localhost:3000"
 ];
 
-
 app.use(cors({
-  origin: "https://frontenedmt-crm-xiu9.vercel.app", // Aapka Frontend URL
+  origin: function (origin, callback) {
+    // Agar origin list mein hai ya local request hai
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log("Blocked by CORS:", origin); // Troubleshooting ke liye
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
