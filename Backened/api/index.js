@@ -18,23 +18,40 @@ import fileroutes from "../routes/fileroutes.js";
 const app = express();
 
 // 3. Middleware
+const allowedOrigins = [
+  "https://frontenedmt-crm-xiu9.vercel.app",
+  "https://mt-crm-pi.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
 app.use(cors({
-  origin: true, // Reflects the origin of the request
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      // In development/initial setup, we can be more lenient if needed, 
+      // but reflecting the origin is usually better.
+      callback(null, true); 
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: [
+    "Content-Type", 
+    "Authorization", 
+    "X-Requested-With", 
+    "Accept", 
+    "Origin",
+    "Access-Control-Allow-Headers",
+    "Access-Control-Request-Method",
+    "Access-Control-Request-Headers"
+  ],
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
-
-// Manual CORS for error responses and edge cases
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PATCH,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
 
 app.use(express.json());
 
@@ -71,8 +88,14 @@ app.get("/", (req, res) => {
 app.use((err, req, res, next) => {
   console.error("🔥 Global Error Handler:", err);
   
-  // Ensure CORS headers on error
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  // Ensure CORS headers on error (don't use * if credentials are used)
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app"))) {
+    res.header("Access-Control-Allow-Origin", origin);
+  } else {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+  }
+  res.header("Access-Control-Allow-Credentials", "true");
   
   res.status(500).json({ 
     message: "Something went wrong on the server!",
