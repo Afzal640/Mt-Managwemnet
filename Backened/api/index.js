@@ -57,6 +57,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.get("/favicon.ico", (req, res) => res.status(204).end());
+app.get("/favicon.png", (req, res) => res.status(204).end());
 
 // ✅ CATCH-ALL 404 HANDLER
 app.use((req, res) => {
