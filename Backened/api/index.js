@@ -25,33 +25,17 @@ const allowedOrigins = [
   "http://localhost:3000"
 ];
 
+
+
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
-      callback(null, true);
-    } else {
-      // In development/initial setup, we can be more lenient if needed, 
-      // but reflecting the origin is usually better.
-      callback(null, true); 
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type", 
-    "Authorization", 
-    "X-Requested-With", 
-    "Accept", 
-    "Origin",
-    "Access-Control-Allow-Headers",
-    "Access-Control-Request-Method",
-    "Access-Control-Request-Headers"
-  ],
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  origin: "https://frontenedmt-crm-xiu9.vercel.app", // Aapka frontend URL
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
+
+// Preflight requests (OPTIONS) ko handle karne ke liye (Ye zaroori hai!)
+app.options("(.*)", cors());
 
 app.use(express.json());
 
