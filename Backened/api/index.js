@@ -15,16 +15,18 @@ import fileroutes from "../routes/fileroutes.js";
 dotenv.config();
 const app = express();
 
-// ✅ 1. MANUAL CORS MIDDLEWARE (More reliable on Vercel)
+// ✅ 1. ULTIMATE CORS CONFIGURATION
+// Ye har request par headers bhejega taake browser block na kare
 app.use((req, res, next) => {
-  // Allow all origins since we disabled credentials in frontend
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin;
   
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept");
-  res.setHeader("Access-Control-Allow-Credentials", "false");
+  // Allow the current origin or fallback to wildcard
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+  res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  // Handle Preflight
+  // Handle Preflight (OPTIONS) request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -33,7 +35,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// ✅ 2. Routes Registration
+// ✅ 2. ROUTES REGISTRATION
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sales", salesRoutes);
@@ -43,7 +45,7 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
-// Root Routes
+// ✅ 3. HEALTH CHECK & BASE ROUTES
 app.get("/", (req, res) => {
   res.json({ 
     message: "CRM API is running... 🚀",
@@ -55,13 +57,12 @@ app.get("/api/health", (req, res) => {
   res.json({ 
     status: "ok", 
     message: "Backend is healthy 🚀",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    node_version: process.version
   });
 });
 
-app.get("/favicon.ico", (req, res) => res.status(204).end());
-
-// ✅ 3. CATCH-ALL 404 HANDLER
+// ✅ 4. CATCH-ALL 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({
     msg: "Endpoint not found",
@@ -70,9 +71,9 @@ app.use((req, res) => {
   });
 });
 
-// ✅ 4. GLOBAL ERROR HANDLER
+// ✅ 5. GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error("Server Error:", err.stack);
+  console.error("🔥 Server Error:", err.stack);
   res.status(500).json({ 
     msg: "Internal Server Error", 
     error: process.env.NODE_ENV === 'development' ? err.message : "Something went wrong"
