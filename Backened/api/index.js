@@ -18,21 +18,29 @@ import fileroutes from "../routes/fileroutes.js";
 
 
 
-const allowedOrigins = [
-  "https://mt-managwemnet-rr4w.vercel.app", // Ye bilkul exact hona chahiye (no extra slash)
-  "http://localhost:5173",
-  "http://localhost:3000"
-];
+// Purana app.use(cors(...)) hata dein aur ye paste karein:
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://mt-managwemnet-rr4w.vercel.app",
+    "http://localhost:5173"
+  ];
 
-app.use(cors({
-  origin: "https://mt-managwemnet-rr4w.vercel.app", // Direct URL likh dein
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-// OPTIONS request ko middleware se pehle handle karein
-app.options("*", cors())
+  // OPTIONS (Preflight) request ko foran handle karein
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
 app.use(express.json());
 
