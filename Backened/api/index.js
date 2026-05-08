@@ -15,21 +15,24 @@ import adminRoutes from "../routes/admin.js";
 import projectRoutes from "../routes/projectRoutes.js";
 import fileroutes from "../routes/fileroutes.js";
 
-// FINAL CORS FIX - Ise aise hi rehne dein
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && (origin.endsWith(".vercel.app") || origin.includes("localhost"))) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).json({});
-  }
-  next();
-});
+// ✅ ENHANCED CORS CONFIGURATION
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost and any vercel.app domain
+    if (origin.includes("localhost") || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
+}));
 
 app.use(express.json());
 
@@ -44,7 +47,20 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "Backend is healthy 🚀" });
+  res.json({ 
+    status: "ok", 
+    message: "Backend is healthy 🚀",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ✅ GLOBAL ERROR HANDLER (Ensures CORS headers are present even on crashes)
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    msg: "Internal Server Error", 
+    error: err.message 
+  });
 });
 
 export default app;
