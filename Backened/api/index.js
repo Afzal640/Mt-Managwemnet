@@ -46,11 +46,29 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "CRM API is running... 🚀",
+    docs: "Please use /api/health to check status"
+  });
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ 
     status: "ok", 
     message: "Backend is healthy 🚀",
     timestamp: new Date().toISOString()
+  });
+});
+
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+
+// ✅ CATCH-ALL 404 HANDLER
+app.use((req, res) => {
+  res.status(404).json({
+    msg: "Endpoint not found",
+    path: req.originalUrl,
+    method: req.method
   });
 });
 
