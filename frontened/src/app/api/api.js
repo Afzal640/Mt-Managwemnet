@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // Ye line check karein
-  withCredentials: true
+  baseURL: import.meta.env.VITE_API_URL, //  // Allow all origins since we disabled credentials
+  withCredentials: false
 });
 
 api.interceptors.request.use((config) => {
