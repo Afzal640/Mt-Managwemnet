@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: `https://mt-crm-pi.vercel.app/api`,
+  // Example: src/api/axios.js ya jahan bhi baseURL hai
+baseURL: "https://mt-managwemnet.vercel.app/api"
 });
 
 api.interceptors.request.use((config) => {
