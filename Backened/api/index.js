@@ -17,32 +17,30 @@ import projectRoutes from "../routes/projectRoutes.js";
 import fileroutes from "../routes/fileroutes.js";
 
 
-
-// Purana app.use(cors(...)) hata dein aur ye paste karein:
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
   const allowedOrigins = [
     "https://mt-managwemnet-rr4w.vercel.app",
     "http://localhost:5173"
   ];
+  const origin = req.headers.origin;
 
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
-  
+
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  // OPTIONS (Preflight) request ko foran handle karein
+  // Sabse zaroori: OPTIONS request ko foran 200 OK dena
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return res.status(200).json({}); 
   }
-  
   next();
 });
 
 app.use(express.json());
+
 
 // Request Logger for Vercel
 app.use((req, res, next) => {
