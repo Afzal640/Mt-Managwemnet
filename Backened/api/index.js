@@ -15,10 +15,24 @@ import fileroutes from "../routes/fileroutes.js";
 dotenv.config();
 const app = express();
 
-// ✅ 1. CORS Configuration
-// Isko routes se pehle hona chahiye
+// ✅ 1. CORS Configuration (Fixed for Vercel)
 const corsOptions = {
-  origin: "*", // Ya specific: "https://mt-managwemnet-pudb.vercel.app"
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      "https://mt-managwemnet-pudb.vercel.app",
+      "https://mt-managwemnet-pudb-git-main-mt3.vercel.app"
+    ];
+
+    // Check if origin is allowed or is a vercel.app subdomain
+    if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || origin.includes("localhost")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   credentials: true,
@@ -27,7 +41,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// ✅ IMPORTANT: Pre-flight requests (OPTIONS) ko handle karne ke liye
+// Force handle OPTIONS for all routes
 app.options("*", cors(corsOptions));
 
 app.use(express.json());
