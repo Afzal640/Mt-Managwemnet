@@ -15,18 +15,24 @@ import fileroutes from "../routes/fileroutes.js";
 dotenv.config();
 const app = express();
 
-// ✅ 1. CORS Configuration (Proper Way)
-app.use(cors({
-  origin: "*", // Production mein isko "https://mt-managwemnet-rr4w.vercel.app" kar dein
+// ✅ 1. CORS Configuration
+// Isko routes se pehle hona chahiye
+const corsOptions = {
+  origin: "*", // Ya specific: "https://mt-managwemnet-pudb.vercel.app"
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true
-}));
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
 
-// ✅ 2. Body Parser
+app.use(cors(corsOptions));
+
+// ✅ IMPORTANT: Pre-flight requests (OPTIONS) ko handle karne ke liye
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 
-// ✅ 3. Routes Registration
+// ✅ 2. Routes Registration
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sales", salesRoutes);
@@ -52,10 +58,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Favicon issues fix
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 
-// ✅ 4. CATCH-ALL 404 HANDLER
+// ✅ 3. CATCH-ALL 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({
     msg: "Endpoint not found",
@@ -64,7 +69,7 @@ app.use((req, res) => {
   });
 });
 
-// ✅ 5. GLOBAL ERROR HANDLER
+// ✅ 4. GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error("Server Error:", err.stack);
   res.status(500).json({ 
@@ -73,5 +78,4 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Vercel ke liye export
 export default app;
