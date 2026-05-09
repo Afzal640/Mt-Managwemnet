@@ -13,29 +13,54 @@ import projectRoutes from "../routes/projectRoutes.js";
 import fileroutes from "../routes/fileroutes.js";
 
 dotenv.config();
+
 const app = express();
 
-// ✅ 1. ULTIMATE CORS CONFIGURATION
-// Ye har request par headers bhejega taake browser block na kare
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  // Allow the current origin or fallback to wildcard
-  res.setHeader("Access-Control-Allow-Origin", origin || "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
-  res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  // Handle Preflight (OPTIONS) request
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-  next();
-});
+// ✅ ALLOWED ORIGINS
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://mt-managwemnet-pudb.vercel.app"
+];
 
+
+// ✅ CORS CONFIG
+app.use(cors({
+  origin: function (origin, callback) {
+
+    // allow requests with no origin
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS Not Allowed"));
+    }
+  },
+
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept"
+  ],
+
+  credentials: true
+}));
+
+
+// ✅ HANDLE PREFLIGHT
+app.options("*", cors());
+
+
+// ✅ BODY PARSER
 app.use(express.json());
 
-// ✅ 2. ROUTES REGISTRATION
+
+// ✅ ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sales", salesRoutes);
@@ -45,39 +70,45 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
-// ✅ 3. HEALTH CHECK & BASE ROUTES
+
+// ✅ ROOT
 app.get("/", (req, res) => {
-  res.json({ 
-    message: "CRM API is running... 🚀",
-    docs: "Please use /api/health to check status"
+  res.json({
+    success: true,
+    message: "CRM API Running 🚀"
   });
 });
 
+
+// ✅ HEALTH CHECK
 app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: "ok", 
-    message: "Backend is healthy 🚀",
-    timestamp: new Date().toISOString(),
-    node_version: process.version
+  res.json({
+    success: true,
+    status: "OK",
+    timestamp: new Date().toISOString()
   });
 });
 
-// ✅ 4. CATCH-ALL 404 HANDLER
+
+// ✅ 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({
-    msg: "Endpoint not found",
-    path: req.originalUrl,
-    method: req.method
+    success: false,
+    message: "Route Not Found"
   });
 });
 
-// ✅ 5. GLOBAL ERROR HANDLER
+
+// ✅ GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error("🔥 Server Error:", err.stack);
-  res.status(500).json({ 
-    msg: "Internal Server Error", 
-    error: process.env.NODE_ENV === 'development' ? err.message : "Something went wrong"
+
+  console.error("🔥 ERROR:", err);
+
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal Server Error"
   });
 });
+
 
 export default app;
