@@ -2,65 +2,56 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 
-// Routes Import
-import authRoutes from "../routes/auth.js";
-import salesRoutes from "../routes/sales.js";
-import leadRoutes from "../routes/leadsroutes.js";
-import activityRoutes from "../routes/activityroutes.js";
-import targetRoutes from "../routes/targetRoutes.js";
-import adminRoutes from "../routes/admin.js";
-import projectRoutes from "../routes/projectRoutes.js";
-import fileroutes from "../routes/fileroutes.js";
+// ROUTES imports (Same as before)
+// ...
 
 dotenv.config();
-
 const app = express();
 
-
-// ✅ ALLOWED ORIGINS
+// ==========================
+// 1. CLEAN CORS CONFIG
+// ==========================
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://mt-managwemnet-pudb.vercel.app"
+  "https://mt-managwemnet-pudb.vercel.app",
+  "https://mt-managwemnet.vercel.app"
 ];
 
-
-// ✅ CORS CONFIG
-app.use(cors({
-  origin: function (origin, callback) {
-
-    // allow requests with no origin
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-
+    
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("CORS Not Allowed"));
+      console.log("❌ BLOCKED BY CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
     }
   },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
 
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+// Apply CORS once
+app.use(cors(corsOptions));
 
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept"
-  ],
+// Handle preflight globally
+app.options("*", cors(corsOptions));
 
-  credentials: true
-}));
-
-
-// ✅ HANDLE PREFLIGHT
-app.options("*", cors());
-
-
-// ✅ BODY PARSER
+// ==========================
+// 2. MIDDLEWARES
+// ==========================
 app.use(express.json());
 
 
-// ✅ ROUTES
+// ==========================
+// ROUTES
+// ==========================
+
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sales", salesRoutes);
@@ -71,18 +62,24 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
 
-// ✅ ROOT
+// ==========================
+// ROOT
+// ==========================
+
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "CRM API Running 🚀"
   });
 });
 
 
-// ✅ HEALTH CHECK
+// ==========================
+// HEALTH CHECK
+// ==========================
+
 app.get("/api/health", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     status: "OK",
     timestamp: new Date().toISOString()
@@ -90,19 +87,26 @@ app.get("/api/health", (req, res) => {
 });
 
 
-// ✅ 404 HANDLER
+// ==========================
+// 404
+// ==========================
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: "Route Not Found"
+    message: "Route Not Found",
+    path: req.originalUrl
   });
 });
 
 
-// ✅ GLOBAL ERROR HANDLER
+// ==========================
+// ERROR HANDLER
+// ==========================
+
 app.use((err, req, res, next) => {
 
-  console.error("🔥 ERROR:", err);
+  console.error("🔥 SERVER ERROR:", err);
 
   res.status(500).json({
     success: false,
