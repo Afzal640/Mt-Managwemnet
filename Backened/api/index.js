@@ -2,7 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 
-// ROUTES - Ensure these match your folder structure
+// ROUTES - Check path: ../ means go back one folder
 import authRoutes from "../routes/auth.js";
 import salesRoutes from "../routes/sales.js";
 import leadRoutes from "../routes/leadsroutes.js";
@@ -15,27 +15,33 @@ import fileroutes from "../routes/fileroutes.js";
 dotenv.config();
 const app = express();
 
-// ==========================
-// CORS: ALLOW EVERYTHING 🌍
-// ==========================
+// 1. MIDDLEWARES
+app.use(express.json()); // Sabse pehle JSON parser
+app.use(express.urlencoded({ extended: true }));
+const allowedOrigins = [
+  "http://localhost:5173", // Local development
+  "https://mt-managwemnet.vercel.app" // Production frontend
+];
+
 app.use(cors({
-  origin: (origin, callback) => {
-    // Har origin ko allow kar dega (Dynamic Wildcard)
-    callback(null, true);
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
   },
-  credentials: true, // Auth headers allow karne ke liye
+  credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
 }));
 
-// OPTIONS requests (Pre-flight) ko handle karne ke liye
+// Pre-flight requests ko handle karne ke liye
 app.options("*", cors());
 
-app.use(express.json());
-
-// ==========================
-// ROUTES
-// ==========================
+// 3. ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sales", salesRoutes);
@@ -45,8 +51,19 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/files", fileroutes);
 
+// 4. HEALTH CHECK
 app.get("/", (req, res) => {
-  res.status(200).json({ success: true, message: "CRM API Open & Running 🚀" });
+  res.status(200).json({ 
+    success: true, 
+    status: "Online",
+    message: "CRM API is running smoothly 🚀" 
+  });
+});
+
+// 5. ERROR HANDLING (Ye zaroor add karein taake crash na ho)
+app.use((err, req, res, next) => {
+  console.error("Global Error:", err.stack);
+  res.status(500).json({ success: false, message: "Something went wrong internaly!" });
 });
 
 export default app;
